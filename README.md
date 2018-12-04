@@ -20,3 +20,5 @@ Record famous repository.
 |Load Balance|[Consistency Hash]() [maglev]()|
 |Cache|[redis]() [memcached]()|
 |Distribute Lock||
+|IDL|[protobuf]() [thrift]()|
+|Compression|[snappy]() [gzip]()|
