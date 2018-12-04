@@ -8,7 +8,7 @@ Record famous repository.
 [PThread](https://computing.llnl.gov/tutorials/pthreads/)
 
 ## Google Three Papers
-[GFS & MapReduce & BigData](./GoogleThreePapers/ThreePapers.md)
+[GFS MapReduce BigData](./GoogleThreePapers/ThreePapers.md)
 
 ## Rpc
 [Brpc]()
@@ -17,7 +17,7 @@ Record famous repository.
 [Phxrpc]()
 
 ## Consistency Potocol
-[Raft](./ConsistencyProtocol/Raft.md) <br/>
+[Raft](./ConsistencyProtocol/Raft.md)
 [Paxos](./ConsistencyProtocol/Paxos.md)
 
 ## KV Storage
