@@ -23,7 +23,7 @@ Record famous repository.
 |IDL|[protobuf]() [thrift]() [xml]() [json]()|
 |Compression|[snappy]() [gzip]()|
 |Log|[glog]()|
-|Code Formate|[cpplint]()|
+|Code Formate|[cpplint](https://github.com/google/styleguide)|
 |Compile Tools|[blade](https://github.com/chen3feng/typhoon-blade) [bazel](https://github.com/bazelbuild/bazel)|
 |Program Magagement|[svn]() [git](https://git-scm.com/book/zh/v2)|
 |Corotinue|[goroutinue]() [phxrpc]()|
