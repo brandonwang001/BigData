@@ -8,5 +8,5 @@ Record famous repository.
 [GFS & MapReduce & BigData](./GoogleThreePapers/ThreePapers.md)
 
 ## Consistency Potocol
-[Raft](./ConsistencyProtocol/Raft.md)
+[Raft](./ConsistencyProtocol/Raft.md) <br/>
 [Paxos](./ConsistencyProtocol/Paxos.md)
