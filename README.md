@@ -15,4 +15,4 @@ Record famous repository.
 [Paxos](./ConsistencyProtocol/Paxos.md)
 
 ## KV Storage
-[kudu](https://github.com/apache/kudu)
+[kudu](./KVStorage/Kudu.md)
