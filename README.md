@@ -18,3 +18,4 @@ Record famous repository.
 |Distribute File System|[GFS]() [HDFS]()|
 |Graph Storage||
 |Load Balance|[Consistency Hash]() [maglev]()|
+|Cache|[redis]() [memcached]()|
