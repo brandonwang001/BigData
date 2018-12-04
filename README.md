@@ -19,3 +19,4 @@ Record famous repository.
 |Graph Storage||
 |Load Balance|[Consistency Hash]() [maglev]()|
 |Cache|[redis]() [memcached]()|
+|Distribute Lock||
