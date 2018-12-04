@@ -25,7 +25,7 @@ Record famous repository.
 |Log|[glog]()|
 |Code Formate|[cpplint]()|
 |Compile Tools|[blade]() [bazel]()|
-|Program Magagement|[svn]() [git]()|
+|Program Magagement|[svn]() [git](https://git-scm.com/book/zh/v2)|
 |Corotinue|[goroutinue]() [phxrpc]()|
 |Resource Negotiator|[yarn]() [Kubernetes]()|
 |Container|[Docker]()|
