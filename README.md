@@ -12,7 +12,7 @@ Record famous repository.
 |Distribute Transaction|[Two Phase Commit]() [Three Phase Commit]() [spanner]()|
 |Async Message Queue| [Kafka]() [Phxqueue]()|
 |Network Library|[muduo]()|
-|Service Discovery|[chubby]() [consul]() [etcd]()|
+|Service Discovery|[chubby]() [consul]() [etcd]() [zookeeper]()|
 |Linux System Library|[folly]()|
 |Distribute Calculate|[Spark]() [Flink]()|
 |Distribute File System|[GFS]() [HDFS]()|
