@@ -5,7 +5,7 @@ Record famous repository.
 [PThread](https://computing.llnl.gov/tutorials/pthreads/)
 
 ## Google Three Papers
-[GFS MapReduce BigData](./GoogleThreePapers/ThreePapers.md)
+[GFS & MapReduce & BigData](./GoogleThreePapers/ThreePapers.md)
 
 ## Consistency Potocol
-[Raft](./ConsistencyProtocol)
+[Raft & Paxos](./ConsistencyProtocol)
