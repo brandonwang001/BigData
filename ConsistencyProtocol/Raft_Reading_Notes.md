@@ -88,5 +88,9 @@
 > Raft is an algorithm for managing a replicated log of the form described in Section 2. Figure 2 summarizes the algorithm in condensed form for reference, and Figure 3 lists key properties of the algorithm; the elements of these figures are discussed piecewise over the rest of this sec- tion.
 > ![Raft State](./images/raft_state.png)
 > > #### NOTES:
-> > 1.
-
+> > - **Persistent state**
+> > - - 1. 持久的状态包含：currentTerm 、 votedFor 和 log[], 上面的状态会在进行rpc之前进行稳定存储介质的持久化。
+> > - - 2. currentTerm : 当前服务可见的最新任期，初始为0且单调。
+> > - - 3. votedFor : 当前任期已接受的候选ID。
+> > - - 4. log[] : 日志记录，每个记录包含状态机的操作命令和被Leader接受的任期(索引初始化为1)。
+> > - **Persistent state**
