@@ -24,6 +24,9 @@
 > > 4. 使用复制状态机的典型系统如：chubby和zookeeper。
 
 > Replicated state machines are typically implemented using a replicated log, as shown in Figure 1. Each server stores a log containing a series of commands, which its state machine executes in order. Each log contains the same commands in the same order, so each state ma- chine processes the same sequence of commands. Since the state machines are deterministic, each computes the same state and the same sequence of outputs.
+> ![Replicated state machines](./images/replicated_state_machines.png)
 > > #### NOTES:
 > > 1. 复制状态机的实现通常是通过使用复制日志来实现的。
 > > 2. 每台机器的状态机具有相同的起始状态，另外每台机器都有一个存储操作的日志文件，操作序列在每台机器上都有相同的顺序。所有的操作按顺序在扭转状态机，则可以保证每台机器都有相同的输出序列。
+
+> 
