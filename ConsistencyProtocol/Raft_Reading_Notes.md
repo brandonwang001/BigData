@@ -3,12 +3,10 @@
 > > 1. raft等效于multi-paxos。
 > > 2. raft一直协议由多个独立的部分组成：**选主**、**日志复制**和**安全**。
 
-> *Consensus algorithms allow a collection of machines to work as a coherent group that can survive the fail- ures of some of its members. Because of this, they play a key role in building reliable large-scale software systems. Paxos [15, 16] has dominated the discussion of consen- sus algorithms over the last decade: most implementations of consensus are based on Paxos or influenced by it, and Paxos has become the primary vehicle used to teach stu- dents about consensus.*
-> > #### NOTES:
-> > 1. 一致性协议是分布式的基石。
-> > 2. Paxos大有一统天下之势。
+> **Strong leader:** Raft uses a stronger form of leader- ship than other consensus algorithms. For example, log entries only flow from the leader to other servers. This simplifies the management of the replicated log and makes Raft easier to understand.
+> > #### NOTE:
+> > 1.日志只能从主机拷贝到备机。（和Paxos有什么区别？）
 
-> *Unfortunately, Paxos is quite difficult to understand, in spite of numerous attempts to make it more approachable. Furthermore, its architecture requires complex changes to support practical systems. As a result, both system builders and students struggle with Paxos.*
-> > #### NOTES:
-> > 1. Paxos很难懂。（两片论文看了多遍，还只是了解流程。)
-
+> **Leader election:** Raft uses randomized timers to elect leaders. This adds only a small amount of mechanism to the heartbeats already required for any consensus algorithm, while resolving conflicts sim- ply and rapidly.
+> #### NOTES:
+> > 1.通过简单改造心跳协议，raft采用了随机计时器来选注，从而可以快速简单的坚决选注冲突的问题。
