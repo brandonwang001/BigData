@@ -165,4 +165,54 @@
 > >         - 如果因为不一致失败，减小下一跳日志索引并重试。
 > >     4. 如果存在N,并且N大于已提交日志索引，同时匹配索引的大多数大于N, 并且这条日志的任期等于当前任期，设置已提交的日志索引为N。
 
+> ![Raft guarantees Property](./images/property.png)
+> > - **Properties**
+> >     - Election Safety : 在一个选举周内最多被选举出一个Leader。
+> >     - Leader Append-Only : 对于一个Leader永远不覆盖写和删除日志，只追加日志。
+> >     - Log Matching : 如果日志包含两条entry有相同的索引和任期，那么日志是唯一在所有的跟定索引。
+> >     - Leader Completeness : 如果一条日志记录在一个跟定的任期内已经提交，对于所有大于当前任期的任期，这条日志都是存在的。
+> >     - State Machine Safety : 如果一个服务器应用一条跟定索引的日志到到状态机，那么其他所有的机器不允许应用一个有相同索引但内容不同的日志。
+
+> Raft is an algorithm for managing a replicated log of the form described in Section 2. Figure 2 summarizes the algorithm in condensed form for reference, and Figure 3 lists key properties of the algorithm; the elements of these figures are discussed piecewise over the rest of this sec- tion.
+> Raft implements consensus by first electing a distin- guished leader, then giving the leader complete responsi- bility for managing the replicated log. The leader accepts log entries from clients, replicates them on other servers, and tells servers when it is safe to apply log entries to their state machines. Having a leader simplifies the man- agement of the replicated log. For example, the leader can decide where to place new entries in the log without con- sulting other servers, and data flows in a simple fashion from the leader to other servers. A leader can fail or be- come disconnected from the other servers, in which case a new leader is elected.
+> > #### NOTES:
+> > 1. 首先选出一个Leader。
+> > 2. Leader具有控制状态机的责任。
+> > 3. Leader从客户端接受日志记录，并发日志记录复制到其他server。
+> > 4. 通知其他servers，当日志记录被安全的应用到状态机。
+> > 5. 如果有一个Leader可以简化复制日志的管理。
+
+> Given the leader approach, Raft decomposes the con- sensus problem into three relatively independent subprob- lems, which are discussed in the subsections that follow:
+> > #### NOTES:
+> > 1. Raft的一致性保证可以分解为3个子问题：选主、日志复制和安全。
+
+> Leader election: a new leader must be chosen when an existing leader fails (Section 5.2).
+> > #### NOTES:
+> > 1. 当存在Leader失败的时候，必须选举一个新的Leader。
+
+> Log replication: the leader must accept log entries from clients and replicate them across the cluster, forcing the other logs to agree with its own (Sec- tion 5.3).
+> > #### NOTES:
+> > 1. Leader必须接受client的日志请求，并且保证将日志复制到集群的其他机器。
+
+> Safety: the key safety property for Raft is the State Machine Safety Property in Figure 3: if any server has applied a particular log entry to its state machine, then no other server may apply a different command for the same log index. Section 5.4 describes how Raft ensures this property; the solution involves an additional restriction on the election mechanism de- scribed in Section 5.2.
+> > #### NOTES:
+> > 1. 安全性的重点是状态机的安全，如果某台机器应用一条日志到状态机，那么其他机器也必须是相同的日志，Raft通过附加的约束来保证。
+
+> A Raft cluster contains several servers; five is a typical number, which allows the system to tolerate two failures. At any given time each server is in one of three states: leader, follower, or candidate. In normal operation there is exactly one leader and all of the other servers are fol- lowers. Followers are passive: they issue no requests on their own but simply respond to requests from leaders and candidates. The leader handles all client requests (if a client contacts a follower, the follower redirects it to the leader). The third state, candidate, is used to elect a new leader as described in Section 5.2. Figure 4 shows the states and their transitions; the transitions are discussed below.
+> > #### NOTES:
+> > 1. N = 2F + 1,应用Raft协议可以保证在F机器不能工作情况下，仍然能保证一致正常工作。
+> > 2. 一台机器可能处于三种状态中的一种：Leader、Follower和Candidate。
+> > 3. 正常状态下一台为Leader，其它为Followder。
+> > 4. Follower是被动的，只是回应Leader和Candidate的请求。
+> > 5. 所有客户端的请求都有Leader来负责处理，如果请求到达Follower，则会被重定向到Leader。
+
+> ![Server State](./images/server_state.png)
+> > #### NOTES:
+> > 1. 起始所有的机器均为Follower。
+> > 2. 如果Follower的计时器超时，则Follwer转化自己为Candidate。
+> > 3. 如果Candidate计时器超时，此时还没够Leader则继续作为Candidate。
+> > 4. 如果Candidate发现选举出Leader，或者一个新的任期开始。则转化为Follower。
+> > 5. 如果Candidate接受到大多Follower的选票，那么转化为Leader。
+> > 6. 如果发现有更高的任期存在，则转化为Follower。
+
 
