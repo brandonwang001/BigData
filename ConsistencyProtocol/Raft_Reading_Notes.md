@@ -88,9 +88,37 @@
 > Raft is an algorithm for managing a replicated log of the form described in Section 2. Figure 2 summarizes the algorithm in condensed form for reference, and Figure 3 lists key properties of the algorithm; the elements of these figures are discussed piecewise over the rest of this sec- tion.
 > ![Raft State](./images/raft_state.png)
 > > #### NOTES:
-> > - **Persistent state**
-> > - - 1. 持久的状态包含：currentTerm 、 votedFor 和 log[], 上面的状态会在进行rpc之前进行稳定存储介质的持久化。
-> > - - 2. currentTerm : 当前服务可见的最新任期，初始为0且单调。
-> > - - 3. votedFor : 当前任期已接受的候选ID。
-> > - - 4. log[] : 日志记录，每个记录包含状态机的操作命令和被Leader接受的任期(索引初始化为1)。
-> > - **Persistent state**
+> > - **Persistent state on all servers**
+> >     - 1. 持久的状态包含：currentTerm 、 votedFor 和 log[], 上面的状态会在进行rpc之前进行稳定存储介质的持久化。
+> >     - 2. currentTerm : 当前服务可见的最新任期，初始为0且单调。
+> >     - 3. votedFor : 当前任期已接受的候选ID。
+> >     - 4. log[] : 日志记录，每个记录包含状态机的操作命令和被Leader接受的任期(索引初始化为1)。
+> > - **Persistent state on all servers**
+> >     - 1. commitIndex : 已知最高的已被提交的日志记录的索引（初始化为0，单调递增）。
+> >     - 2. lastApplied : 已知最高的已被应用到状态记得日志记录的索引。
+> > - **Volatile state on leaders**
+> >     - 1. 选举后所有状态重新初始化。
+> >     - 2. nextIndex[] : 存储发往每个server的下条日志的索引。(初始化为leader最后一条日志的索引+1)
+> >     - 3. matchIndex[] : 存储将进行复制的日志记录的索引。(初始化为0，单调递增)
+
+> ![AppendEntries RPC](./images/append_entries_rpc.png) 
+> > #### NOTES:
+> > - Leader进行复制日志和心跳。
+> > - **Arguments**
+> >     - **term** : leader的任期
+> >     - **leaderId** : follower重定向请求到leader。
+> >     - **prevLogIndex** : 最新一条日志的前继日志的索引。
+> >     - **prevLogTerm** : 前继日志的任期。
+> >     - **entries[]** : 日志存储。（为空时进行心跳探测）
+> >     - **leaderCommit** : leader已提交的最大日志索引。
+> > - **Results:**
+> >     - **term** : 当前任期，Leader更新自己。
+> >     - **success** : 如果follower包含和prevLogIndex、prevLogTerm匹配的日志
+> > - **Receiver implementation**
+> >     1. term < currentTerm ? false : true;
+> >     2. 如果日志不包含和prevLogIndex、prevLogTerm匹配的日志返回false
+> >     3. 如果存在和最新任期不同的日志，删除存在的日志，其他follower追赶它。
+> >     4. 如果日志之前不存在，则直接存储
+> >     5. if leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)。
+
+> ![RequestVote RPC](./images/request_vote_rpc.png)
