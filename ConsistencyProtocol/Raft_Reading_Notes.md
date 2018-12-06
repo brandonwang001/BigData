@@ -23,4 +23,7 @@
 > > 3. 在分布式大规模系统中存在master节点的，需要使用**复制状态机来管理选主**和存储的相关配置信息。
 > > 4. 使用复制状态机的典型系统如：chubby和zookeeper。
 
-
+> Replicated state machines are typically implemented using a replicated log, as shown in Figure 1. Each server stores a log containing a series of commands, which its state machine executes in order. Each log contains the same commands in the same order, so each state ma- chine processes the same sequence of commands. Since the state machines are deterministic, each computes the same state and the same sequence of outputs.
+> > #### NOTES:
+> > 1. 复制状态机的实现通常是通过使用复制日志来实现的。
+> > 2. 每台机器的状态机具有相同的其实状态，状态机的相关操作都按顺序
