@@ -84,3 +84,9 @@
 > > #### NOTES:
 > > 1. 为了设计便于理解的算法，作者运用了分解问题和减少状态机的方法降低理解的复杂度。
 > > 2. Raft使用了随机的方法来简化选主。
+
+> Raft is an algorithm for managing a replicated log of the form described in Section 2. Figure 2 summarizes the algorithm in condensed form for reference, and Figure 3 lists key properties of the algorithm; the elements of these figures are discussed piecewise over the rest of this sec- tion.
+> ![Raft State](./images/raft_state.png)
+> > #### NOTES:
+> > 1.
+
