@@ -215,4 +215,40 @@
 > > 5. 如果Candidate接受到大多Follower的选票，那么转化为Leader。
 > > 6. 如果发现有更高的任期存在，则转化为Follower。
 
+> Raft divides time into terms of arbitrary length, as shown in Figure 5. Terms are numbered with consecutive integers. Each term begins with an election, in which one or more candidates attempt to become leader as described in Section 5.2. If a candidate wins the election, then it serves as leader for the rest of the term. In some situations an election will result in a split vote. In this case the term will end with no leader; a new term (with a new election)will begin shortly. Raft ensures that there is at most one leader in a given term.
+> > #### NOTES:
+> > 1. Raft把事件切片为不同长度的任期。
+> > 2. 每个任期有一个编号，编号为连续的整数。
+> > 3. 每个任期的开始都是从选举开始的，此时有一个或者多个server尝试成为Leader。
+> > 4. 一旦一个候选者在选举中获胜，这个任期内剩下的事件，这个server就作为Leader。
+> > 5. 肯能存在某个任期没有成功选出Leader，那么下个任期将会开始。
+> > 6. Raft保证每个任期内被选举出的Leader不多余一个。
+> > ![Term](./images/term.png)
 
+> Different servers may observe the transitions between terms at different times, and in some situations a server may not observe an election or even entire terms. Terms act as a logical clock [14] in Raft, and they allow servers to detect obsolete information such as stale leaders. Each server stores a current term number, which increases monotonically over time. Current terms are exchanged whenever servers communicate; if one server’s current term is smaller than the other’s, then it updates its current term to the larger value. If a candidate or leader discovers that its term is out of date, it immediately reverts to fol- lower state. If a server receives a request with a stale term number, it rejects the request.
+> > #### NOTES:
+> > 1. 任期在Raft中扮演这逻辑锁的概念, 他们允许每个server获取leeder的信息。
+> > 2. 每个机器存在一个单调递增的current term number。
+> > 3. 当机器交互时，会进行当前任期的交换。
+> > 4. 如果一个机器的任期小于其它机器的任期，它会将自己任期更新为最大的任期。
+> > 5. 如果一个候选者或者leader发现自己的任期过期，则会扭转到follower状态。
+> > 6. 如果一台机器接受到一个老任期的请求，则直接拒绝。
+
+> Raft servers communicate using remote procedure calls (RPCs), and the basic consensus algorithm requires only two types of RPCs. RequestVote RPCs are initiated by candidates during elections (Section 5.2), and Append- Entries RPCs are initiated by leaders to replicate log en- tries and to provide a form of heartbeat (Section 5.3). Sec- tion 7 adds a third RPC for transferring snapshots between servers. Servers retry RPCs if they do not receive a re- sponse in a timely manner, and they issue RPCs in parallel for best performance.
+> > #### NOTES:
+> > 1. Raft的机器之间是通过rpc来进行通信，rpc只需RequestVote RPCs 和Append- Entries RPCs。
+> > 2. RequestVote RPCs 是candidate在候选期间使用的。
+> > 3. Append- Entries RPCs 是复制日志和保持心跳。
+> > 4. 另外一种rpc用来交换机器的快照。
+> > 5. 对于重试请求可以通过并发可以获得更好的性能。
+
+> Raft uses a heartbeat mechanism to trigger leader elec- tion. When servers start up, they begin as followers. A server remains in follower state as long as it receives valid RPCs from a leader or candidate. Leaders send periodic heartbeats (AppendEntries RPCs that carry no log entries) to all followers in order to maintain their authority. If a follower receives no communication over a period of time called the election timeout, then it assumes there is no vi- able leader and begins an election to choose a new leader.
+> > #### NOTES:
+> > 1. Raft使用心跳机制来触发选主。
+> > 2. 机器启动是都是Follower，如果一台机器接受到来自Leader或者candidate的合法请求，它就保持在Follower状态。
+> > 3. Leader通过发送周期性心跳来保证自己的权限。
+> > 4. 如果选举定时器超时，则发起选举进行新一个任期的选举。 
+
+> To begin an election, a follower increments its current term and transitions to candidate state. It then votes for itself and issues RequestVote RPCs in parallel to each of the other servers in the cluster. A candidate continues in this state until one of three things happens: (a) it wins the election, (b) another server establishes itself as leader, or (c) a period of time goes by with no winner. These out- comes are discussed separately in the paragraphs below.
+> > #### NOTES:
+> > 1. 
