@@ -122,3 +122,47 @@
 > >     5. if leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)。
 
 > ![RequestVote RPC](./images/request_vote_rpc.png)
+> > - 候选者发起获取选票。
+> > - **Arguments**
+> >     - **term** : 候选者任期
+> >     - **candidateId** : 请求选票的候选者id。
+> >     - **lastLogIndex** : 候选者最新一条日志的索引。
+> >     - **lastLogTerm** : 候选者最新一条日志的任期。
+> > - **Results**
+> >     - **term** : 当前任期，用于候选者更新自己
+> >     - **voteGranted** : 如果候选者获得选票，其值为真。
+> > - **Receiver implementation**
+> >     1. Reply false if term < currentTerm
+> >     2. 如果当前任期已接受的候选为NULL或者等于请求选票的候选者id，并且候选的日志和接受者的日志保持一致，则获得当前选票。
+
+> ![All Servers](./images/all_servers.png)
+> > - **All Sercers** 
+> >     1. 已提交的日志索引大于已应用的日志索引，增加已应用的日志索引，将log[lastApplied]应用到状态级。
+> >     2. 如果请求rpc或者相应rpc包含任期大于currentTerm的任期T，设置currentTerm = T，切换到follower。
+
+> ![Followers](./images/followers.png)
+> > - **Followers**
+> >     1. 响应候选者或者leader的rpc。
+> >     2. 如果选举超时内，没有接受到leader的AppendEntries, 同时也没有接受到候选者的投票请求，自己则转化为候选者。
+
+> ![Candidates](./images/candidates.png)
+> > - **Candidates**
+> >     1. 转换为候选者，开始进行选举。
+> >         - 增加当前任期
+> >         - 选举自己
+> >         - 重置选举计时器
+> >         - 发送选举rpc请求到其他的服务器
+> >     2. 如果得到大多数机器的投票，则转变化leader。
+> >     3. 如果接受搭配追加日志的rpc请求，则转变为follower
+> >     4. 如果选举计时器超时，则重新进行选举。
+
+> ![Leaders](./images/leaders.png)
+> > - **Leaders**
+>       1. 一旦当选为leader，发送空的追加日志rpc（心跳）请求到每个服务器，在空闲的事件发送心跳到其他机器，延长自己的任期。
+>       2. 如果接受到client的请求，追加日志到本地日志，当日志被执行到转台机后回应客户端。
+>       3. 如果一个追随者的日志索引大于下一条日志索引，发送追加日志的rpc请求，日志的索引是从下一跳日志索引开始。
+>           - 如果成功，更新follower的下一跳日志索引和匹配日志索引。
+>           - 如果因为不一致失败，减小下一跳日志索引并重试。
+>       4. 如果存在N,并且N大于已提交日志索引，同时匹配索引的大多数大于N, 并且这条日志的任期等于当前任期，设置已提交的日志索引为N。
+
+
