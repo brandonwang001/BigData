@@ -251,4 +251,42 @@
 
 > To begin an election, a follower increments its current term and transitions to candidate state. It then votes for itself and issues RequestVote RPCs in parallel to each of the other servers in the cluster. A candidate continues in this state until one of three things happens: (a) it wins the election, (b) another server establishes itself as leader, or (c) a period of time goes by with no winner. These out- comes are discussed separately in the paragraphs below.
 > > #### NOTES:
-> > 1. 
+> > 1. 选举开始，追随者增加自己的当前任期，并且转变为候选者状态。 
+> > 2. 然后候选者发起请求，推荐选举自己，通过并发RequestVote RPCs到集群中。
+> > 3. 出现三种情况，将导致候选者的状态发生迁移:
+> >     - 赢得选举
+> >     - 有server证实自己获得选举
+> >     - 或者一段事件后，集群中没有人获得选举
+
+> A candidate wins an election if it receives votes from a majority of the servers in the full cluster for the same term. Each server will vote for at most one candidate in a given term, on a first-come-first-served basis (note: Sec- tion 5.4 adds an additional restriction on votes). The ma- jority rule ensures that at most one candidate can win the election for a particular term (the Election Safety Prop- erty in Figure 3). Once a candidate wins an election, it becomes leader. It then sends heartbeat messages to all of the other servers to establish its authority and prevent new elections.
+> > #### NOTES:
+> > 1. 当一个候选者在一个任期内，获得集群中大多数的机器的选票，则候选者在选举中胜出成为leader。
+> > 2. 在一个任期内，一个server最多选举一个候选者，并且遵守先到先服务的原则。
+> > 3. 众多的规则保证在一个特定的周期内，最多只有一个候选者可以选举胜出。
+> > 4. 一旦Candidate获得选举胜出成为Leader，它将发送心跳到集群的其他机器确认自己的授权，并组织发起新的选举。
+
+> While waiting for votes, a candidate may receive an AppendEntries RPC from another server claiming to be leader. If the leader’s term (included in its RPC) is at least as large as the candidate’s current term, then the candidate recognizes the leader as legitimate and returns to follower state. If the term in the RPC is smaller than the candidate’s current term, then the candidate rejects the RPC and con- tinues in candidate state.
+> > #### NOTES:
+> > 1. 当候选者处在等待选票的状态时，候选者如果接受到来自其他机器的请求，并声称自己是leader，只有当leader的任期大于等于自己本地任期，才认为当前leader是合法的并迁移到Follower的状态。否则候选者可以拒绝假Leader的请求，并保持在候选者状态。
+
+> The third possible outcome is that a candidate neither wins nor loses the election: if many followers become candidates at the same time, votes could be split so that no candidate obtains a majority. When this happens, each candidate will time out and start a new election by incre- menting its term and initiating another round of Request- Vote RPCs. However, without extra measures split votes could repeat indefinitely.
+> > #### NOTES:
+> > 1. 第三种的可能是一个候选者既没有获胜也没有失败。（选举流产了）
+> > 2. 选举流产的发生因为当所有Follower同时迁移到候选者状态，并同时向集群的其他机器发去选举的rpc请求。导致没有任何一个机器可以获得集群的多数派的选举。
+> > 3. 当上面的这种情况发生，每个候选者将会超时，然后会发起新一轮的选举。
+> > 4. 为了避免上述情况的发生，需要添加额外的约束，来保证不会无限期的发生。
+
+> Raft uses randomized election timeouts to ensure that split votes are rare and that they are resolved quickly. To prevent split votes in the first place, election timeouts are chosen randomly from a fixed interval (e.g., 150–300ms). This spreads out the servers so that in most cases only a single server will time out; it wins the election and sends heartbeats before any other servers time out. The same mechanism is used to handle split votes. Each candidate restarts its randomized election timeout at the start of an election, and it waits for that timeout to elapse before starting the next election; this reduces the likelihood of another split vote in the new election. Section 9.3 shows that this approach elects a leader rapidly.
+> > #### NOTES:
+> > 1. Raft使用随机选举超时来解决选举分裂的情况并快速解决问题。
+> > 2. 为了避免选举分裂的发生，选举发生时每个server随机选择一个选举超时时间[150,300]ms。
+> > 3. 上面的随机选举超时可以保证在大多数情况下，只有一台Server发生超时。
+> > 4. 选举超时的server可以在其他server还没有超时的情况下，选举胜出并发送心跳。
+> > 5. 相同的机制来被用来防止选举分裂情况的发生。
+> > 6. 每个候选者在启动选举的时候随机选择一个选举超时时间，这样可以降低下一个选举周期发生选举分裂的概率。
+> > 7. Raft表明这样的选举是非常有效的。
+
+> Elections are an example of how understandability guided our choice between design alternatives. Initially we planned to use a ranking system: each candidate was assigned a unique rank, which was used to select between competing candidates. If a candidate discovered another candidate with higher rank, it would return to follower state so that the higher ranking candidate could more eas- ily win the next election. We found that this approach created subtle issues around availability (a lower-ranked server might need to time out and become a candidate again if a higher-ranked server fails, but if it does so too soon, it can reset progress towards electing a leader). We made adjustments to the algorithm several times, but after each adjustment new corner cases appeared. Eventually we concluded that the randomized retry approach is more obvious and understandable.
+> > #### NOTES:
+> > 1. 作者提出的随机选主法是经过多次迭代和探索得出一个直观且易于理解的方案。 
+ 
