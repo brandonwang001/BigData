@@ -292,4 +292,55 @@
 
 > Once a leader has been elected, it begins servicing client requests. Each client request contains a command to be executed by the replicated state machines. The leader appends the command to its log as a new entry, then is- sues AppendEntries RPCs in parallel to each of the other servers to replicate the entry. When the entry has been safely replicated (as described below), the leader applies the entry to its state machine and returns the result of that execution to the client. If followers crash or run slowly, or if network packets are lost, the leader retries Append- Entries RPCs indefinitely (even after it has responded to the client) until all followers eventually store all log en- tries.
 > > #### NOTES:
-> > 1.  
+> > 1.正常流程:
+> >     - Leader接受Client的请求，每个请求中包含一条命令。
+> >     - Leader首先把请求作为日志记录到自己的日志中。
+> >     - Leader并行通知Followers复制日志。
+> >     - 当日志被安全复制后，Leader就将本条日志应用到状态机，并返回client成功。
+> >     - 如果Follwer慢速或者宕机，或者网络发生丢包。Leader会不断并发Append- Entries RPCs，知道大部分Follower存储了日志记录。
+
+> Logs are organized as shown in Figure 6. Each log en- try stores a state machine command along with the term number when the entry was received by the leader. The term numbers in log entries are used to detect inconsis- tencies between logs and to ensure some of the properties in Figure 3. Each log entry also has an integer index iden-tifying its position in the log.      
+> ![logs_structure](./images/logs_structure.png)
+> > #### NOTES:
+> > 1. 每条日志记录包含：状态机命令和任期。
+> > 2. 任期是用来检测日志间的不一致性，从而保证Raft的某些特性。
+> > 3. 每条日志有一个整数索引来标记它在日志中的位置。
+
+> The leader decides when it is safe to apply a log en- try to the state machines; such an entry is called commit- ted. Raft guarantees that committed entries are durable and will eventually be executed by all of the available state machines. A log entry is committed once the leader that created the entry has replicated it on a majority of the servers (e.g., entry 7 in Figure 6). This also commits all preceding entries in the leader’s log, including entries created by previous leaders. Section 5.4 discusses some subtleties when applying this rule after leader changes, and it also shows that this definition of commitment is safe. The leader keeps track of the highest index it knows to be committed, and it includes that index in future AppendEntries RPCs (including heartbeats) so that the other servers eventually find out. Once a follower learns that a log entry is committed, it applies the entry to its local state machine (in log order).
+> > #### NOTES:
+> > 1. Leader来决策什么时候可以安全的应用日志记录到状态机。
+> > 2. 这样的一条日志被成为*commited*(???)。
+> > 3. Raft来保证已提交日志的持久性，并且将日志记录最终应用到大多数的状态机。
+> > 4. 如果一条日志被大多数Follower成功复制，这条日志就是已提交的。
+> > 5. 如果一条日志是已提交的，那么它之前的日志也必定是已提交的，尽管某条日志可能是前一个Leader创建的。
+> > 6. 5.4节将会讨论更换Leader时，这些日志的状态也是安全的。
+> > 7. Leader会追踪所有Follower的待提交日志的索引，同时也包含下次AppendEntries Rpcs的索引。Follower最终可以确定那些日志记录可以应用到状态机。
+> > 8. 一旦Follower确定某条日志已处于提交状态，便会将这条记录应用到它自己的状态机。
+
+> We designed the Raft log mechanism to maintain a high level of coherency between the logs on different servers. Not only does this simplify the system’s behavior and make it more predictable, but it is an important component of ensuring safety. Raft maintains the following proper- ties, which together constitute the Log Matching Property in Figure 3:
+> > #### NOTES:
+> > 1. Raft是通过Raft日志机制来保证不同机器上的日志是高度一致的。
+> > 2. 不仅仅因为Raft日志机制可以简化系统的行为，同时也可以更好的预测系统的行为。同时它是一个保证安全行的重要组件。
+> > 3. Raft是通过下面的两个性质，来保证Raft日志的匹配性质。
+
+> If two entries in different logs have the same index and term, then they store the same command.
+> > #### NOTES:
+> > 1. 如果不同的日志的两条日志记录有相同的索引和任期，那么它们的状态机命令也一定是相同的。
+
+> If two entries in different logs have the same index and term, then the logs are identical in all preceding entries.
+> > #### NOTES:
+> > 1.如果不同的日志的两条日志记录有相同的索引和任期，那么它们前继的所在的日志和当前的日志记录在相同的日志文件。
+
+> The first property follows from the fact that a leader creates at most one entry with a given log index in a given term, and log entries never change their position in the log. The second property is guaranteed by a simple con- sistency check performed by AppendEntries. When send- ing an AppendEntries RPC, the leader includes the index and term of the entry in its log that immediately precedes the new entries. If the follower does not find an entry in its log with the same index and term, then it refuses the new entries. The consistency check acts as an induction step: the initial empty state of the logs satisfies the Log Matching Property, and the consistency check preserves the Log Matching Property whenever logs are extended. As a result, whenever AppendEntries returns successfully, the leader knows that the follower’s log is identical to its own log up through the new entries.
+
+> > #### NOTES:
+> > 1. 第一个特性得到保证的原因是：一个Leader在一个任期的日志文件中，确定日志索引的日志记录最多只有一条。并且日志记录一旦确定索引就不会在变更。
+> > 2. 第二个特性是通过AppendEntries的检测来保证的。
+> > 3. 当Leader并发AppendEntries RPC的时候，那正在复制的日志记录的任期和索引一定是先于新的日志记录。
+> > 4. 如果follower在它的日志中没有发现有相同的日志索引和任期的日志记录(这个时候为什么会存在相同索引和任期的日志记录)，它(这里应该是Leader)将拒绝新的日志记录。
+> > 5. 一致性检测是通过国定的步骤：
+> >     - 刚初始的日志是满足一致的匹配性质的。
+> >     - 当增加日志记录的时候，一致性检测保证一致的匹配性质。
+> >     - 结果，AppendEntries成功返回的时候，Leader就可以获知follower和自己的日志一样，可以通过新的日志记录。
+
+ 
