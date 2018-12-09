@@ -343,4 +343,66 @@
 > >     - 当增加日志记录的时候，一致性检测保证一致的匹配性质。
 > >     - 结果，AppendEntries成功返回的时候，Leader就可以获知follower和自己的日志一样，可以通过新的日志记录。
 
- 
+> During normal operation, the logs of the leader and followers stay consistent, so the AppendEntries consis- tency check never fails. However, leader crashes can leave the logs inconsistent (the old leader may not have fully replicated all of the entries in its log). These inconsisten- cies can compound over a series of leader and follower crashes. Figure 7 illustrates the ways in which followers’ logs may differ from that of a new leader. A follower may be missing entries that are present on the leader, it may have extra entries that are not present on the leader, or both. Missing and extraneous entries in a log may span multiple terms.
+> ![Logs Incontensistency](./images/logs_exception.png)
+> > #### NOTES:
+> > 1. 正常情况下，leader和follower的日志保持一致，所以AppendEntries一致性检测不会失败。
+> > 2. 异常情况下，当leader还没有将自己的日志记录全部复制到follower，然后宕机会造成日志的不一致。
+> > 3. 复杂的异常往往会混合一系列leader和follower的宕机。
+> > 4. 图7列出了follwer和新leader日志不一致的情况。
+> > 5. follower可能丢失leader有的日志记录，有可能follower比leader多了一些日志记录。丢失和多出的日志记录可能持续多个任期。 
+
+> In Raft, the leader handles inconsistencies by forcing the followers’ logs to duplicate its own. This means that conflicting entries in follower logs will be overwritten with entries from the leader’s log. Section 5.4 will show that this is safe when coupled with one more restriction.
+> > #### NOTES:
+> > 1. 在Raft协议中，leader通过强制follower复制自己的协议来处理不一致性。
+> > 2. 所以为了解决不一致，需要follower重新同步leader的日志，并覆写不一致的日志。
+> > 3. 5.4节会描述当附加多个限制，这样的操作是安全的。
+
+> To bring a follower’s log into consistency with its own, the leader must find the latest log entry where the two logs agree, delete any entries in the follower’s log after that point, and send the follower all of the leader’s entries after that point. All of these actions happen in response to the consistency check performed by AppendEntries RPCs. The leader maintains a nextIndex for each follower, which is the index of the next log entry the leader will send to that follower. When a leader first comes to power, it initializes all nextIndex values to the index just after the last one in its log (11 in Figure 7). If a follower’s log is inconsistent with the leader’s, the AppendEntries consis- tency check will fail in the next AppendEntries RPC. Af- ter a rejection, the leader decrements nextIndex and retries the AppendEntries RPC. Eventually nextIndex will reach a point where the leader and follower logs match. When this happens, AppendEntries will succeed, which removes any conflicting entries in the follower’s log and appends entries from the leader’s log (if any). Once AppendEntries succeeds, the follower’s log is consistent with the leader’s, and it will remain that way for the rest of the term.
+> > #### NOTES:
+> > 1. 为了保证follower和自己日志相同，leader需要确定follower和自己那些日志记录是相同的，然后删除follower和自己不相同的日志记录，再将follower不同的日志记录复制给follower。
+> > 2. 上面的操作发生在AppendEntries RPCs的一致性检查后；如果不一致，则进行上面的过程。 
+> > 3. leader维护了每一个follower的nextIndex，这个nextIndex记录了leader应该发给follower的下条日志的索引。
+> > 4. 当一个leader刚获得选举的时候，它初始化所有的nexgIndex为自己日志记录最后一条日志记录的索引+1.
+> > 5. 如果一个follower的日志和leader的日志不一致，AppendEntries一致性检测将会在下次AppendEntries RPC失败。
+> > 6. 一致性检测失败后，leader将会减少自己维护的nextIndex,重新进行AppendEntries RPC。
+> > 7. 重复上面的过程，leader和follower日志最终会达到一致。
+> > 8. 上面的过程会删除follower和leader不一致的日志，并将leader的日志复制给follower。
+> > 9. 上面的过程会保证leader和follower的日志保持一致，直到leader的任期结束。
+
+> If desired, the protocol can be optimized to reduce the number of rejected AppendEntries RPCs. For example, when rejecting an AppendEntries request, the follower can include the term of the conflicting entry and the first index it stores for that term. With this information, the leader can decrement nextIndex to bypass all of the con- flicting entries in that term; one AppendEntries RPC will be required for each term with conflicting entries, rather than one RPC per entry. In practice, we doubt this opti- mization is necessary, since failures happen infrequently and it is unlikely that there will be many inconsistent en- tries.
+> > #### NOTES:
+> > 1. leader每次让nextIndex减1，然后通过AppendEntries RPC是否一致。这个流程是可以优化的。
+> > 2. 当follower拒绝AppendEntries RPC的同时，可以返回日志冲突的任期和第一日志的索引。通过这些信息leader可以跳过所有冲突的日志。
+> > 3. 通过上面的方面，leader接可以进行一次AppendEntries RPC解决日志冲突，而不是每条日志记录检测一次。
+> > 4. 实际情况，这种优化不存在优化的必要性，因为不一致性发生的频率很低，此外不一致的日志记录数也很少。
+
+> With this mechanism, a leader does not need to take any special actions to restore log consistency when it comes to power. It just begins normal operation, and the logs auto- matically converge in response to failures of the Append- Entries consistency check. A leader never overwrites or deletes entries in its own log (the Leader Append-Only Property in Figure 3).
+> > #### NOTES:
+> > 1. 通过上面的机制，当一个leader刚被徐局，不要额外的操作去恢复日志的一致性。它只需要开始正常的流程，当追加日志一致性检测失败后，日志的不一致将会逐渐收敛。这样leader不要重写和删除本地日志。
+
+> This log replication mechanism exhibits the desirable consensus properties described in Section 2: Raft can ac- cept, replicate, and apply new log entries as long as a ma- jority of the servers are up; in the normal case a new entry can be replicated with a single round of RPCs to a ma- jority of the cluster; and a single slow follower will not impact performance.
+> > #### NOTES:
+> > 1. 这种日志复制机制满足在第二节我们所期望的一致性。当集群中大多数机器是正常时，Raft就可以接受、复制、应用新的日志记录。在正常的情况下，一个新的日志记录可以通过一轮RPCs被复制到其他机器。当集群中单个follower过慢，并不影响整个集群的性能。
+
+> The previous sections described how Raft elects lead- ers and replicates log entries. However, the mechanisms described so far are not quite sufficient to ensure that each state machine executes exactly the same commands in the same order. For example, a follower might be unavailable while the leader commits several log entries, then it could be elected leader and overwrite these entries with new ones; as a result, different state machines might execute different command sequences.
+> > #### NOTES:
+> > 1. 上几节描述了Raft的选主和日志复制过程，这些机制并不能保证每个状态机按相同的顺序执行所有的命令。举个例子，一个follower可在leader提交了几条日志记录后不可用，然后它被选为下一个任期的leader并重写了这些日志，结果会导致不同的状态机按不同的顺序执行命令。
+
+> This section completes the Raft algorithm by adding a restriction on which servers may be elected leader. The restriction ensures that the leader for any given term con- tains all of the entries committed in previous terms (the Leader Completeness Property from Figure 3). Given the election restriction, we then make the rules for commit- ment more precise. Finally, we present a proof sketch for the Leader Completeness Property and show how it leads to correct behavior of the replicated state machine.
+> > #### NOTES:
+> > 1. 这一节我们通过增加了如何选主的额外附加，这个限制可以保证新选举的leader包含了上一任期所有已提交的日志。通过选举限制，日志提交的过程变的更加准确。我们将证明选主的完整性以及它如何纠正状态机的行为。
+
+> In any leader-based consensus algorithm, the leader must eventually store all of the committed log entries. In some consensus algorithms, such as Viewstamped Repli- cation [22], a leader can be elected even if it doesn’t initially contain all of the committed entries. These al- gorithms contain additional mechanisms to identify the missing entries and transmit them to the new leader, ei- ther during the election process or shortly afterwards. Un- fortunately, this results in considerable additional mecha- nism and complexity. Raft uses a simpler approach where it guarantees that all the committed entries from previous 
+terms are present on each new leader from the moment of its election, without the need to transfer those entries to the leader. This means that log entries only flow in one di- rection, from leaders to followers, and leaders never over- write existing entries in their logs.
+> > #### NOTES:
+> > 1. 一致性算法中，leader需要包含所有已提交的日志，或者leader不包含所有的日志旦需要通过额外的机制保证清楚那些日志丢失并将丢失的日志传给新的leader。Raft使用了第一种方法，新选举的leader必须包含上一任期所有的日志。这种方法保证了日志的复制是单向流动的，只会从leader到follower，不需要从follower到leader。此外leader不要重写的自己的本地日志，只需要追加即可。
+
+> Raft uses the voting process to prevent a candidate from winning an election unless its log contains all committed entries. A candidate must contact a majority of the cluster in order to be elected, which means that every committed entry must be present in at least one of those servers. If the candidate’s log is at least as up-to-date as any other log in that majority (where “up-to-date” is defined precisely below), then it will hold all the committed entries. The RequestVote RPC implements this restriction: the RPC includes information about the candidate’s log, and the voter denies its vote if its own log is more up-to-date than that of the candidate.
+> > #### NOTES:
+> > 1. Raft通过选举过程来组织一个后选择成为新的leader，除非它的日志包含上一个任期所有已提交的日志。一个候选者必须联系集群中大多数机器来获得选举胜出，这就以为这每条已提交的日志记录必须存在在至少一台机器中。如果候选者的日志包含大多数server的日志，那么候选者就拥有可所有已提交的日志。RequestVote RPC实现了这个限制，这个rpc包含了候选者的日志信息，如果投票者的日志比候选者日志信息更新，它将拒绝投票。
+
+> Raft determines which of two logs is more up-to-date by comparing the index and term of the last entries in the logs. If the logs have last entries with different terms, then the log with the later term is more up-to-date. If the logs end with the same term, then whichever log is longer is more up-to-date.
+> > #### NOTES:
+> > 1. Raft通过比较日期和日志索引来决定那个日志更新。
+> > 2. 如果
