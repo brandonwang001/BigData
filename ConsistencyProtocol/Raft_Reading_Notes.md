@@ -473,4 +473,6 @@ terms are present on each new leader from the moment of its election, without th
 
 > Given the Leader Completeness Property, we can prove the State Machine Safety Property from Figure 3, which states that if a server has applied a log entry at a given index to its state machine, no other server will ever apply a different log entry for the same index. At the time a server applies a log entry to its state machine, its log must be identical to the leader’s log up through that entry and the entry must be committed. Now consider the lowest term in which any server applies a given log index; the Log Completeness Property guarantees that the leaders for all higher terms will store that same log entry, so servers that apply the index in later terms will apply the same value. Thus, the State Machine Safety Property holds.
 > > #### NOTES:
-> > 1. 跟定leader的完整性质，我们可以证明状态机的安全性从图3。 
+> > 1. 给定leader的完整性质，我们可以证明状态机的安全性从图3。 
+> > 2. 如果一个server将跟定索引的日志应用到了自己的状态机，那么其它机器应用相同索引的日志到状态机，那么相同索引的日志内容必须有相同的日志。   
+
