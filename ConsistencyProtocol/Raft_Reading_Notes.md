@@ -434,6 +434,43 @@ terms are present on each new leader from the moment of its election, without th
 > > 2. 对于leader的完整性我们假定不成立，然后证明它的不成立。（反证法）
 > > 3. 假定leader在任期T提交了一条日志，但是日志记录没有被未来任期的leader所记录。考虑任期ID最小但大于任期T的任期U没有存储日志记录。
 
+> ![fig_9](./images/contradiction_figure.png)
 >  The committed entry must have been absent from leaderU’s log at the time of its election (leaders never delete or overwrite entries).
 > > #### NOTES:
-> > 1.    
+> > 1. 当任期U的leader当选的时候，它的日志中不存在已提交的日志。
+
+> leaderT replicated the entry on a majority of the clus- ter, and leaderU received votes from a majority of the cluster. Thus, at least one server (“the voter”) both accepted the entry from leaderT and voted for leaderU, as shown in Figure 9. The voter is key to reaching a contradiction.
+> > #### NOTES:
+> > 1. 任期T的leader将日志复制到集群中多数的机器上，并且任期U的leader接受了集群中多数的投票。如图9所示，集群中至少存在一台机器既接受了leaderT复制的日志也投票给了leaderU。投票者是反证法的关键。
+
+> The voter must have accepted the committed entry from leaderT before voting for leaderU; otherwise it would have rejected the AppendEntries request from leaderT (its current term would have been higher than T).
+> > 1. 投票者先接受leaderT的复制日志，然后投票给leaderU。
+> > 2. 否则，它将拒绝来自leaderT的AppendEntries的请求。
+
+> The voter still stored the entry when it voted for leaderU, since every intervening leader contained the entry (by assumption), leaders never remove entries, and followers only remove entries if they conflict with the leader.
+> > #### NOTES:
+> > 1. 当候选者投票给leaderU的时候，它还存储来自leaderT的复制日志。因为每一个leader包含这条日志记录，leader永远不删除记录，followers只是删除和leader冲突的日志。
+
+> The voter granted its vote to leaderU, so leaderU’s log must have been as up-to-date as the voter’s. This leads to one of two contradictions. 
+> > #### NOTES:
+> > 1. 投票这将票投给了leaderU，所以leaderU的日志一定比候选者的日志更新。这将会推导出下面两个矛盾：
+
+> First, if the voter and leaderU shared the same last log term, then leaderU’s log must have been at least as long as the voter’s, so its log contained every entry in the voter’s log. This is a contradiction, since the voter contained the committed entry and leaderU was assumed not to.
+> > #### NOTES:
+> > 1. 首先，如果投票者和LeaderU有相同的最后日志任期，那么leaderU的日志一定等于或者长于投票者的日志。所以leaderU的日志包含了投票这的每一条日志。这是一个矛盾，既然投票者包含已提交的日志，而假设LeaderU不包含。
+
+> Otherwise, leaderU’s last log term must have been larger than the voter’s. Moreover, it was larger than T, since the voter’s last log term was at least T (it con- tains the committed entry from term T). The earlier leader that created leaderU’s last log entry must have contained the committed entry in its log (by assump- tion). Then, by the Log Matching Property, leaderU’s log must also contain the committed entry, which is a contradiction.
+> > #### NOTES:
+> > 1. 另外，leaderU最后一条日志的任期一定是大于投票者最后一条日志的任期。进一步，这个任期是大于T。既然投票者的最后一条日志的任期至少为T，上任期的leader创建了leaderU的最后一条日志一定包含了已提交的一致。所以，根据日志匹配的性质，leaderU的日志必须包含已提交的日志，这是一个矛盾。
+
+> This completes the contradiction. Thus, the leaders of all terms greater than T must contain all entries from term T that are committed in term T.
+> > #### NOTES:
+> > 1. 反证法完成，因此，所有任期大于T的leader一定包含了任期T提交的日志。
+
+> The Log Matching Property guarantees that future leaders will also contain entries that are committed indirectly, such as index 2 in Figure 8(d).
+> > #### NOTES:
+> > 1. 日志匹配性质保证了将来任期的leader包含了那些间接提交的日志。例如图8的索引2所示。 
+
+> Given the Leader Completeness Property, we can prove the State Machine Safety Property from Figure 3, which states that if a server has applied a log entry at a given index to its state machine, no other server will ever apply a different log entry for the same index. At the time a server applies a log entry to its state machine, its log must be identical to the leader’s log up through that entry and the entry must be committed. Now consider the lowest term in which any server applies a given log index; the Log Completeness Property guarantees that the leaders for all higher terms will store that same log entry, so servers that apply the index in later terms will apply the same value. Thus, the State Machine Safety Property holds.
+> > #### NOTES:
+> > 1. 跟定leader的完整性质，我们可以证明状态机的安全性从图3。 
