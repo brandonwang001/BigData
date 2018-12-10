@@ -475,4 +475,107 @@ terms are present on each new leader from the moment of its election, without th
 > > #### NOTES:
 > > 1. 给定leader的完整性质，我们可以证明状态机的安全性从图3。 
 > > 2. 如果一个server将跟定索引的日志应用到了自己的状态机，那么其它机器应用相同索引的日志到状态机，那么相同索引的日志内容必须有相同的日志。   
+> > 3. 当一台机器把日志应用到状态机，它的日志必须和leader的日志是一致的，并且日志状态是已提交的。
+> > 4. 我们现在考虑在最小的任期下，任何一台机器应用跟定索引的日志。日志完整性保证那些任期更大的leader存储了相同的日志，所以后面任期应用的索引将会有相同的值。因此状态的安全性是成立的。
 
+> Finally, Raft requires servers to apply entries in log in- dex order. Combined with the State Machine Safety Prop- erty, this means that all servers will apply exactly the same set of log entries to their state machines, in the same order.
+> > #### NOTES:
+> > 1. 最终，Raft需要服务器应用日志按照索引的顺序。结合日志的匹配安全特性，这意味这所有的服务器将应用相同的日志记录到状态机，并且日志有相同的顺序。
+
+> Until this point we have focused on leader failures. Fol- lower and candidate crashes are much simpler to han- dle than leader crashes, and they are both handled in the same way. If a follower or candidate crashes, then fu- ture RequestVote and AppendEntries RPCs sent to it will fail. Raft handles these failures by retrying indefinitely; if the crashed server restarts, then the RPC will complete successfully. If a server crashes after completing an RPC but before responding, then it will receive the same RPC again after it restarts. Raft RPCs are idempotent, so this causes no harm. For example, if a follower receives an AppendEntries request that includes log entries already present in its log, it ignores those entries in the new re- quest.
+> > #### NOTES:
+> > 1. 现在我们讨论leader失败的问题。
+> > 2. follower和candidate的失败比leader的失败容易处理。
+> > 3. 如果follower和candidate崩溃，那么未来的RequestVote和AppendEntries RPCs将会失败。
+> > 4. Raft通过重试来解决follower和candidate的崩溃。
+> > 5. 如果崩溃的服务重启，这些重试RPC将会成功。
+> > 6. 如果一个服务在完成一个RPC，但是还没响应的时候崩溃，重启后将会重新接受到相同的RPC请求。因为Raft的Rpcs是幂等的，所以不会引起问题。
+> > 7. 举个例子，如果一个follower接受到一个AppendEntries的请求，请求中的日志已经在它自己的日志中，那么它可以忽略这些日志记录。
+
+> One of our requirements for Raft is that safety must not depend on timing: the system must not produce incor- rect results just because some event happens more quickly or slowly than expected. However, availability (the ability of the system to respond to clients in a timely manner) must inevitably depend on timing. For example, if mes- sage exchanges take longer than the typical time between server crashes, candidates will not stay up long enough to win an election; without a steady leader, Raft cannot make progress.
+> > #### NOTES:
+> > 1. Raft的一个重要特点就是不依赖时间, 不能因为一些事件发生的比预期快或者慢就导致一些不正确的结果。
+> > 2. 然而可用性还是必然依赖于时间的, 例如，如果消息的交换华为的时间长于服务崩溃的典型时间，候选者将等待足够就而获得选举。没有一个稳定的leader，Raft将不能运转。
+
+> Leader election is the aspect of Raft where timing is most critical. Raft will be able to elect and maintain a steady leader as long as the system satisfies the follow- ing timing requirement:
+> **broadcastTime << electionTimeout << MTBF**
+> In this inequality broadcastTime is the average time it takes a server to send RPCs in parallel to every server in the cluster and receive their responses; electionTime- out is the election timeout described in Section 5.2; and MTBF is the average time between failures for a single server. The broadcast time should be an order of mag- nitude less than the election timeout so that leaders can reliably send the heartbeat messages required to keep fol- lowers from starting elections; given the randomized ap- proach used for election timeouts, this inequality also makes split votes unlikely. The election timeout should be a few orders of magnitude less than MTBF so that the sys- tem makes steady progress. When the leader crashes, the system will be unavailable for roughly the election time- out; we would like this to represent only a small fraction of overall time.
+> > #### NOTES:
+> > 1. 选主是Raft的至关重要的一个部分，并且时间是致命的。如果可以选主或者leader保持稳定需要满足下面的时间要求：
+> > 2. 在上面的不等式中，广播时间是服务并发Rpc往返的平均时间。
+> > 3. 选举超时5.2节描述的选举超时。
+> > 4. MTBF是平均故障间隔时间，它面试单台服务两次失败间隔的平均值。
+> > 5. 广播时间严格小于选举超时时间，这样leader才能可靠的发送心跳，来完成刚获得选举之后保持通知到follower。
+> > 6. 选举超时使用了随机化的方法，这个不等式还能保证选举分裂不可能发生。
+> > 7. 选举超时时间必须远小于平均故障间隔时间，才能保证Raft的稳定运行。
+> > 8. 如果leader崩溃，系统只有在选举时间间隔内不可用。我们可以预期选举不可用时间远远小于整个时间。
+
+> The broadcast time and MTBF are properties of the un- derlying system, while the election timeout is something we must choose. Raft’s RPCs typically require the recip- ient to persist information to stable storage, so the broad- cast time may range from 0.5ms to 20ms, depending on storage technology. As a result, the election timeout is likely to be somewhere between 10ms and 500ms. Typical
+server MTBFs are several months or more, which easily satisfies the timing requirement.
+> > #### NOTES:
+> > 1. 广播时间和平均故障间隔时间是下伏系统的特性，选举超时间必须我们所选择的。
+> > 2. Raft的rpc往往需要将信息持久化到稳定设备，所以广播时间会在0.5ms和20ms之间波动，这个时间依赖于存储技术。
+> > 3. 结果，选举超时时间大概率在10ms到500ms之间，典型下伏系统的平均故障间隔时间往往是几个月或者更久，这将轻松满足时间的要求。 
+
+> Up until now we have assumed that the cluster config- uration (the set of servers participating in the consensus algorithm) is fixed. In practice, it will occasionally be nec- essary to change the configuration, for example to replace servers when they fail or to change the degree of replica- tion. Although this can be done by taking the entire cluster off-line, updating configuration files, and then restarting the cluster, this would leave the cluster unavailable dur- ing the changeover. In addition, if there are any manual steps, they risk operator error. In order to avoid these is- sues, we decided to automate configuration changes and incorporate them into the Raft consensus algorithm.
+> > #### NOTES:
+> > 1. 之前我们的讨论都是假设集群的配置是固定的。实际情况我们往往需要改变配置，例如替换掉失败的机器或者改变复制的自由度。
+> > 2. 尽管我们可以通过让整个集群下线，更新配置并重启机器。但是将会导致整个集群在变更期间不可用。
+> > 3. 除此之外，如果存在手工操作，将会加剧变更的风险。
+> > 4. 为解决可停机变更，我们在Raft中支持了不停机情况下配置的自动变更。
+
+> For the configuration change mechanism to be safe, there must be no point during the transition where it is possible for two leaders to be elected for the same term. Unfortunately, any approach where servers switch directly from the old configuration to the new configura- tion is unsafe. It isn’t possible to atomically switch all of the servers at once, so the cluster can potentially split into two independent majorities during the transition (see Fig- ure 10).
+> > #### NOTES:
+> > 1. 为了保证配置自动变更不存在风险，我们必须保证在变更期间不会有两台机器都被选举为leader。
+> > 2. 不幸的是，任何由老配置直接变更为新配置的方法都是不安全的。也不可能自动同时更换所有的机器，所已集群可以容忍分裂为两部分在变更期间。
+
+> In order to ensure safety, configuration changes must use a two-phase approach. There are a variety of ways to implement the two phases. For example, some systems (e.g., [22]) use the first phase to disable the old configura- tion so it cannot process client requests; then the second phase enables the new configuration. In Raft the cluster first switches to a transitional configuration we call joint consensus; once the joint consensus has been committed, the system then transitions to the new configuration. The joint consensus combines both the old and new configu- rations:
+> > #### NOTES:
+> > 1. 为了保证安全性，匹配的变更必须使用两阶段的方法。这里实现两阶段的方法有很多种，例如在第一阶段是老配置失效，这样就不能处理客户端的请求，第二阶段是新的配置生效。
+> > 2. Raft协议中，先使集群切换到过渡配置，我们成为联合一致性。一旦联合一致性被提交，系统将迁移到新配置。
+> > 3. 联合一致性结合了新老配置：
+
+> - Log entries are replicated to all servers in both con- figurations.
+> - Any server from either configuration may serve as leader.
+> - Agreement (for elections and entry commitment) re- quires separate majorities from both the old and new configurations.
+> > #### NOTES:
+> > 1. 日志被复制到所有的新老配置中的机器。
+> > 2. 新老配置中任何机器可以成为leader。
+> > 3. 对于选举和复制需要分别得到新配置和老配置中大多数的同意。
+
+> The joint consensus allows individual servers to transition between configurations at different times without com- promising safety. Furthermore, joint consensus allows the cluster to continue servicing client requests throughout the configuration change.
+> > #### NOTES:
+> > 1. 联合一致性允许独立的机器在不同的配置间进行切换，进一步，联合一致性允许在配置切换的整个过程中响应客户端的请求。
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+ 
