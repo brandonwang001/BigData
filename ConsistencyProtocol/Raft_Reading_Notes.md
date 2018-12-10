@@ -405,4 +405,35 @@ terms are present on each new leader from the moment of its election, without th
 > Raft determines which of two logs is more up-to-date by comparing the index and term of the last entries in the logs. If the logs have last entries with different terms, then the log with the later term is more up-to-date. If the logs end with the same term, then whichever log is longer is more up-to-date.
 > > #### NOTES:
 > > 1. Raft通过比较日期和日志索引来决定那个日志更新。
-> > 2. 如果
+> > 2. 如果不同最大的任期不同，直接比较谁的任期更新。
+> > 3. 如果任期相同，则比较谁的日志记录更长。
+
+> As described in Section 5.3, a leader knows that an en- try from its current term is committed once that entry is stored on a majority of the servers. If a leader crashes be- fore committing an entry, future leaders will attempt to finish replicating the entry. However, a leader cannot im- mediately conclude that an entry from a previous term is committed once it is stored on a majority of servers. Fig-ure 8 illustrates a situation where an old log entry is stored on a majority of servers, yet can still be overwritten by a future leader.
+> ![](./images/new_leader_cant_determine_commitent.png)
+> > #### NOTES:
+> > 1. 正如5.3节描述的，如果日志记录被存储到集群中大多数机器，leader可以直到自己任期的当前日志是被提交的。
+> > 2. 如果一个leader还没有提交日志然后宕机，下任leader将会尝试完成日志的复制。
+> > 3. 新当选的leader不能直接准确知道存储在集群的大多数机器上的一条记录是否是提交的。
+> > 4. 图8给出了一种特殊情况，尽管一条日志被大多数机器存储，但是新的leader还是要覆盖的情况。
+
+> To eliminate problems like the one in Figure 8, Raft never commits log entries from previous terms by count- ing replicas. Only log entries from the leader’s current term are committed by counting replicas; once an entry from the current term has been committed in this way, then all prior entries are committed indirectly because of the Log Matching Property. There are some situations where a leader could safely conclude that an older log en- try is committed (for example, if that entry is stored on ev- ery server), but Raft takes a more conservative approach for simplicity.
+> > #### NOTES:
+> > 1. 为了消除如图8的情况，Raft不会根据已复制的副本数提交前任的日志记录。
+> > 2. 只有本任期内，Raft才会根据已复制的副本数来提交日志。
+> > 3. 只有当本任期内的一条日志记录按照上面的方面已提交，由于日志匹配的性质会保证之前的日志也被提交。
+> > 4. 这里存在一些情况下，leader可以直接断定日志已经提交，但是Raft采取保守的方法来简化设计。
+
+> Raft incurs this extra complexity in the commitment rules because log entries retain their original term num- bers when a leader replicates entries from previous terms. In other consensus algorithms, if a new leader re- replicates entries from prior “terms,” it must do so with its new “term number.” Raft’s approach makes it easier to reason about log entries, since they maintain the same term number over time and across logs. In addition, new leaders in Raft send fewer log entries from previous terms than in other algorithms (other algorithms must send re- dundant log entries to renumber them before they can be committed).
+> > #### NOTES:
+> > Raft招致这种复杂度的愿意是因为日志复制的时候对于前一任期的日志仍保留其任期ID。
+> > 在其它的一致性算法中，如果新任leader复制前任的日志会将任期修改为新的任期。
+
+>  Given the complete Raft algorithm, we can now ar- gue more precisely that the Leader Completeness Prop- erty holds (this argument is based on the safety proof; see Section 9.2). We assume that the Leader Completeness Property does not hold, then we prove a contradiction. Suppose the leader for term T (leaderT) commits a log entry from its term, but that log entry is not stored by the leader of some future term. Consider the smallest term U > T whose leader (leaderU) does not store the entry
+> > #### NOTES:
+> > 1. 给出完成的Raft算法后，我们可以进一步讨论leader的完整性。
+> > 2. 对于leader的完整性我们假定不成立，然后证明它的不成立。（反证法）
+> > 3. 假定leader在任期T提交了一条日志，但是日志记录没有被未来任期的leader所记录。考虑任期ID最小但大于任期T的任期U没有存储日志记录。
+
+>  The committed entry must have been absent from leaderU’s log at the time of its election (leaders never delete or overwrite entries).
+> > #### NOTES:
+> > 1.    
