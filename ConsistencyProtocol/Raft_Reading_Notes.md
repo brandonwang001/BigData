@@ -547,10 +547,97 @@ server MTBFs are several months or more, which easily satisfies the timing requi
 > > #### NOTES:
 > > 1. 联合一致性允许独立的机器在不同的配置间进行切换，进一步，联合一致性允许在配置切换的整个过程中响应客户端的请求。
 
+> Cluster configurations are stored and communicated using special entries in the replicated log; Figure 11 illus- trates the configuration change process. When the leader receives a request to change the configuration from Cold to Cnew, it stores the configuration for joint consensus (Cold,new in the figure) as a log entry and replicates that entry using the mechanisms described previously. Once a given server adds the new configuration entry to its log, it uses that configuration for all future decisions (a server always uses the latest configuration in its log, regardless of whether the entry is committed). This means that the leader will use the rules of Cold,new to determine when the log entry for Cold,new is committed. If the leader crashes, a new leader may be chosen under either Cold or Cold,new, depending on whether the winning candidate has received Cold,new. In any case, Cnew cannot make unilateral deci- sions during this period.
+> > #### NOTES:
+> > 1. 集群配置也是持久化存储的，通过特殊的rpc进行通信的。
+> > 2. 图11展示可配置的交换过程。
+> > 3. 当leader接受到请求将配置从老配置更换为新配置。然后leader将配置根据联合一致性存储为日志记录，并使用前述的机制将日志记录进行复制。
+> > 4. 一个server接受到新配置的记录，他将使用新配置来进行未来的决定。
+> > 5. 这也就意味着：leader将使用联合配置来决定一条日志是否应该提交。
+> > 6. 如果leader崩溃，一个新的leader将会在配置老配置或联合配置下被选举。依赖于获胜的获选者是接受到联合配置。
+> > 7. 无论如何，新配置不能单边的进行决定在配置更换的过程中。
 
+> Once Cold,new has been committed, neither Cold nor Cnew can make decisions without approval of the other, and the Leader Completeness Property ensures that only servers with the Cold,new log entry can be elected as leader. It is now safe for the leader to create a log entry describing Cnew and replicate it to the cluster. Again, this configura- tion will take effect on each server as soon as it is seen. When the new configuration has been committed under the rules of Cnew, the old configuration is irrelevant and servers not in the new configuration can be shut down. As shown in Figure 11, there is no time when Cold and Cnew can both make unilateral decisions; this guarantees safety.
+> ![configuration_change](./images/configuration_change.png)
+> > #### NOTES:
+> > 1. 一旦联合配置被提交，不管新配置或者老配置都不能进行决定，leader的完整性保证在联合配置下只有一个leader可以被选举。
+> > 2. 一旦leader当选，它就可以创建一条新配置的日志记录，并复制给其它节点。
+> > 3. 另外，一旦机器看到新的配置就尽快生效。
+> > 4. 当新的日志记录在新配置下被提交，那么老的配置就失去作用，那些不在新配置中的机器就可以下线了。
+> > 5. 正如图11所示，不可能同时存在新配置或老配置单独进行决定的。这保证可安全性。
 
+> There are three more issues to address for reconfigura- tion. The first issue is that new servers may not initially store any log entries. If they are added to the cluster in this state, it could take quite a while for them to catch up, during which time it might not be possible to com- mit new log entries. In order to avoid availability gaps, Raft introduces an additional phase before the configu- ration change, in which the new servers join the cluster as non-voting members (the leader replicates log entries to them, but they are not considered for majorities). Once the new servers have caught up with the rest of the cluster, the reconfiguration can proceed as described above.
+> > #### NOTES:
+> > 1. 更换配置存在三个问题：
+> > - 第一个问题：
+> >     - 新初始化的机器没有存储任何之前的日志。这台机器可能花费很久的时间才可以追赶上大家的状态，然后才可以提交新的日志记录。
+> >     - 为了避免不可用的时间的长度，Raft在配置变更前引入了一个额外的阶段，这这个阶段只作为不投票的程票，只接受leader的日志复制，但是不能进行投票。
 
+> The second issue is that the cluster leader may not be part of the new configuration. In this case, the leader steps down (returns to follower state) once it has committed the Cnew log entry. This means that there will be a period of time (while it is committing Cnew ) when the leader is man- aging a cluster that does not include itself; it replicates log entries but does not count itself in majorities. The leader transition occurs when Cnew is committed because this is the first point when the new configuration can operate in- dependently (it will always be possible to choose a leader from Cnew ). Before this point, it may be the case that only a server from Cold can be elected leader.
+> > #### NOTES:
+> > 1. 第二个问题是集群的leader可能不存在新的配置中，这种情况下，leader提交了新配置的日志，然后失去leader的权限。这就意味着在很长的一段时间内，leader将管理整个集群，但是这个集群的大多数不包含他自己。leader迁移发生在当新配置被提交，因为正是这个时刻新的配置可以独立执行。这个时刻之前，只有就配置的机器可以选举为leader。
+ 
+> The third issue is that removed servers (those not in Cnew) can disrupt the cluster. These servers will not re- ceive heartbeats, so they will time out and start new elec- tions. They will then send RequestVote RPCs with new term numbers, and this will cause the current leader to revert to follower state. A new leader will eventually be elected, but the removed servers will time out again and the process will repeat, resulting in poor availability.
+> > #### NOTES: 
+> > 1. 移除机器可能打乱集群，这些机器将不会再接受心跳，它们将会超时并重启选举。
+> > 2. 移除的机器将会发送携带新任期的请求选举的rpc，这将导致当前leader回退到follower的状态。
+> > 3. 一个新的leader将会被重新选举，但是移除的机器将会再次超时，这个过程将不断重复导致集群的不可用。
 
+> To prevent this problem, servers disregard RequestVote RPCs when they believe a current leader exists. Specif- ically, if a server receives a RequestVote RPC within the minimum election timeout of hearing from a cur- rent leader, it does not update its term or grant its vote. This does not affect normal elections, where each server waits at least a minimum election timeout before starting an election. However, it helps avoid disruptions from re- moved servers: if a leader is able to get heartbeats to its cluster, then it will not be deposed by larger term num- bers.
+> > #### NOTES:
+> > 1. 为了组织上面问题的发生，机器可以不理会RequestVote RPCs当它相信当前leader是存在的。
+> > 2. 特殊的，如果一个server接受到一个选举请求rpc并携带了最小超时，这个超时是从leader那获得的，他就可以不更新自己的任期或投票。
+> > 3. 这不影响正常的选举，每个server将等待至少一个最小超时时间在它们重启新的选举之前。
+> > 4. 然而，它可以避免因为移除机器造成的集群混乱。
+> > 5. 如果一个ledaer可以获得集群的心跳，它将不会被更大的任期废除。
+
+> Raft’s log grows during normal operation to incorpo- rate more client requests, but in a practical system, it can- not grow without bound. As the log grows longer, it oc- cupies more space and takes more time to replay. This will eventually cause availability problems without some mechanism to discard obsolete information that has accu- mulated in the log.
+> > #### NOTES:
+> > 1. Raft的日志在正常处理客户端的请求下不断的增长，但是这是一个事实系统，不可能任由日志无限增长。
+> > 2. 随着日志的不断增长，体制占据了更多的机器空间，重放的时候也将花费更多的时间。
+> > 3. 如果没有一些机器可以及时的删除日志中的无用信息，最终会导致可影星问题。
+
+> Snapshotting is the simplest approach to compaction. In snapshotting, the entire current system state is written to a snapshot on stable storage, then the entire log up to that point is discarded. Snapshotting is used in Chubby and ZooKeeper, and the remainder of this section de- scribes snapshotting in Raft.
+> > #### NOTES:
+> > 1. 快照是压缩日志的一种有效方法。
+> > 2. 在快照中将保存整个系统的状态，并且快照将被持久化在稳定设备上。
+> > 3. 然后快照点之前的日志就可以取消了。
+> > 4. 快照也被应用在chubby和zookeper中，下面的章节将描述raft的快照。
+
+> Incremental approaches to compaction, such as log cleaning [36] and log-structured merge trees [30, 5], are also possible. These operate on a fraction of the data at once, so they spread the load of compaction more evenly over time. They first select a region of data that has ac- cumulated many deleted and overwritten objects, then they rewrite the live objects from that region more com- pactly and free the region. This requires significant addi- tional mechanism and complexity compared to snapshot- ting, which simplifies the problem by always operating on the entire data set. While log cleaning would require modifications to Raft, state machines can implement LSM trees using the same interface as snapshotting.
+> > #### NOTES:
+> > 1. 除了快照，日志清理或者lsmtree的方法也是可以的，但是它们每次操作数据的一部分，将会使得压缩变的更加频繁。
+> > 2. 首先选则一个堆积很多删除和重写对象的数据区域，然后更加紧凑的重写或者的对象，并释放这些区域。
+> > 3. 上面的方法需要额外的机制和复杂度和快照相比。
+> > 4. 相比之下，快照是操作整个数据集，可以简化操作。
+> > 5. 另外日志清理需要修改Raft，状态机可以实现lsmtree使用和快照相同的接口。
+
+> Figure 12 shows the basic idea of snapshotting in Raft. Each server takes snapshots independently, covering just the committed entries in its log. Most of the work con- sists of the state machine writing its current state to the snapshot. Raft also includes a small amount of metadata in the snapshot: the last included index is the index of the last entry in the log that the snapshot replaces (the last en- try the state machine had applied), and the last included term is the term of this entry. These are preserved to sup- port the AppendEntries consistency check for the first log entry following the snapshot, since that entry needs a pre- vious log index and term. To enable cluster membership changes (Section 6), the snapshot also includes the latest configuration in the log as of last included index. Once a server completes writing a snapshot, it may delete all log entries up through the last included index, as well as any prior snapshot.
+> ![](./images/snapshotting.png)
+> > #### NOTES:
+> > 1. 图12展示了Raft中快照的基本思想。
+> > 2. 每台机器独立进行快照，然后快照包含自己日志中已提交的日志。
+> > 3. 工作中的大部分是状态机将自己的状态写入到快照中。
+> > 4. Raft的快照中也包含了一小部分的元信息。
+> >     - last included index : 上一条被快照替换的日志记录的索引。
+> >     - last included term : 是日志记录的任期。
+> > 5. 这些将被保留用来支持追加日志一致性检测，对于快照后的下一条日志, 因为这条日志记录需要前一条日志记录的索引和任期。
+> > 6. 为可支持集群成员变更，快宅童谣需要包含快照点下一跳日志的配置信息。
+> > 7. 一旦一台机器完成了快照，它可以删除所有的快照点之前所有的日志记录。之前的快照点同样也可以删除。 
+
+> Although servers normally take snapshots indepen- dently, the leader must occasionally send snapshots to followers that lag behind. This happens when the leader has already discarded the next log entry that it needs to send to a follower. Fortunately, this situation is unlikely in normal operation: a follower that has kept up with the leader would already have this entry. However, an excep- tionally slow follower or a new server joining the cluster (Section 6) would not. The way to bring such a follower up-to-date is for the leader to send it a snapshot over the network.
+> > #### NOTES:
+> > 1. 计算每个server正常情况下都是独立的进行快照备份，在某些情况下还是需要leader发送快照到那些快照滞后的机器。
+> > 2. 上面的情况发生在leader已经删除了它需要复制给follower的日志。
+> > 3. 幸运的是，这样的情况在正常的操作中是不会发生的：一个follower已经保持和leader一样的日志，然而一个异常满的follower或这一个新的机器加入都集群，这一种情况下需要leader通过网络发送快照才能使follower的日志追赶上。
+
+> The leader uses a new RPC called InstallSnapshot to send snapshots to followers that are too far behind; see Figure 13. When a follower receives a snapshot with this RPC, it must decide what to do with its existing log en- tries. Usually the snapshot will contain new information not already in the recipient’s log. In this case, the follower discards its entire log; it is all superseded by the snapshot and may possibly have uncommitted entries that conflict with the snapshot. If instead the follower receives a snap- shot that describes a prefix of its log (due to retransmis- sion or by mistake), then log entries covered by the snap- shot are deleted but entries following the snapshot are still valid and must be retained.
+> > #### NOTES:
+> > 1. leader通过被称为InstallSnapshot的rpc来将快照发往那些日志非常落后的机器，如图13所示。
+> > 2. 当一个follower接受这种复制快照的rpc，它必须决定怎么处理存在的日志记录。
+> > 3. 通常快照将会包含新的信息而接受者日志中所没有的。
+> > 4. 这种情况下，follower删除自己的日志，所有将被快照取代，同时也可能包含了为提交但和快照冲突的日志。
+> > 5. 如果follower接受到一个快照描述日志的前缀，那么被快照覆盖的日志将会被删除，但是日志后面日志仍然是合法的必须被保留。
 
  
 
