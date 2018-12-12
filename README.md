@@ -7,7 +7,7 @@ Record famous repository.
 |POSIX Threads Programming | [PThread](https://computing.llnl.gov/tutorials/pthreads/)|
 |Google Three Papers | [GFS MapReduce BigTable](./GoogleThreePapers/ThreePapers.md)|
 |Rpc |[Brpc]() [Thrift]() [Grpc]() [Phxrpc]() [restful]() [Dubbo]()|
-|Consistency Potocol | [Raft](./ConsistencyProtocol/Raft.md) [Paxos](./ConsistencyProtocol/Paxos.md)
+|Consistency Potocol | [Raft](./ConsistencyProtocol/Raft.md) [Paxos](./ConsistencyProtocol/Paxos.md) [logcabin](https://github.com/logcabin/logcabin)
 |KV Storage |[kudu](./KVStorage/Kudu.md) [rocksdb]() [leveldb]() [tair]() [oceanbase]() [TiKV]() [HBase]() [BigTable]()|
 |Distribute Transaction|[Two Phase Commit]() [Three Phase Commit]() [spanner]()|
 |Async Message Queue| [Kafka]() [Phxqueue]()|
