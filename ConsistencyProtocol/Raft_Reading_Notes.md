@@ -639,30 +639,53 @@ server MTBFs are several months or more, which easily satisfies the timing requi
 > > 4. 这种情况下，follower删除自己的日志，所有将被快照取代，同时也可能包含了为提交但和快照冲突的日志。
 > > 5. 如果follower接受到一个快照描述日志的前缀，那么被快照覆盖的日志将会被删除，但是日志后面日志仍然是合法的必须被保留。
 
+> This snapshotting approach departs from Raft’s strong leader principle, since followers can take snapshots with- out the knowledge of the leader. However, we think this departure is justified. While having a leader helps avoid conflicting decisions in reaching consensus, consensus has already been reached when snapshotting, so no de- cisions conflict. Data still only flows from leaders to fol- lowers, just followers can now reorganize their data.
+> > #### NOTES:
+> > 1. 快照的方法背离了强leader原则，因为followers可以进行快照不要leader的参与。
+> > 2. 然而，我们认为这种背离是有正当理由的。在达到一致之前leader可以进行控制避免冲突，一旦达到一致，就不存在冲突，所以可以进行快照。
+> > 3. 数据依然是从leaders流向follower，只是followers可以重新整理自己的数据。
+
+> We considered an alternative leader-based approach in which only the leader would create a snapshot, then it would send this snapshot to each of its followers. How- ever, this has two disadvantages. First, sending the snap- shot to each follower would waste network bandwidth and slow the snapshotting process. Each follower already has the information needed to produce its own snapshots, and it is typically much cheaper for a server to produce a snap- shot from its local state than it is to send and receive one over the network. Second, the leader’s implementation would be more complex. For example, the leader would need to send snapshots to followers in parallel with repli- cating new log entries to them, so as not to block new
+client requests.
+> > #### NOTES:
+> > 1. 我们考虑一种可行的方法，只有leader可以进行快照，然后将快照复制给其它的follower。
+> > 2. 上面的方法有两个缺点：
+> >     - 发送快照，将会浪费网络带宽，并降低快照的处理速度。另外follower具备了产生了快照的所有信息，这比leader复制快照有效的多。
+> >     - 可能使得leader的实现更加的复杂。当leader进行快照复制的时候，需要阻塞客户端的请求。
+
+> There are two more issues that impact snapshotting per-
+formance. First, servers must decide when to snapshot. If a server snapshots too often, it wastes disk bandwidth and energy; if it snapshots too infrequently, it risks exhaust- ing its storage capacity, and it increases the time required to replay the log during restarts. One simple strategy is to take a snapshot when the log reaches a fixed size in bytes. If this size is set to be significantly larger than the expected size of a snapshot, then the disk bandwidth over- head for snapshotting will be small.
+> The second performance issue is that writing a snap- shot can take a significant amount of time, and we do not want this to delay normal operations. The solution is to use copy-on-write techniques so that new updates can be accepted without impacting the snapshot being writ- ten. For example, state machines built with functional data structures naturally support this. Alternatively, the operat- ing system’s copy-on-write support (e.g., fork on Linux) can be used to create an in-memory snapshot of the entire state machine (our implementation uses this approach).
+> > #### NOTES:
+> > 1. 影响快照速度的问题有两个：
+> >     - 如何选择servers惊醒快照的频率，如果生成的过快，则会浪费磁盘带宽和能力；如果生成较慢，不能及时减小日志的磁盘容量，同时也会增加复制日志到新启动机器的日志数量和时间。所以可以通过判断日志的磁盘容量是否超过某个阈值，然后进行快照减少磁盘容量。
+> >     - 第二问题是进行快照时将会花费一定的时间，这个时间是不可以忽略的。我们不希望快照的耗时延迟了正常操作。解决方法是使用copy-on-write技术，这样新的更新可以接受，并不影响快照的写入。例如：状态机通过函数数据结构自然的支持，另外，操作的系统的copy-on-write可以被用来快照整个状态机，我们的实现就使用可这种方法。
+
+> This section describes how clients interact with Raft, including how clients find the cluster leader and how Raft supports linearizable semantics [10]. These issues apply to all consensus-based systems, and Raft’s solutions are similar to other systems.
+> > #### NOTES:
+> > 1. 这一章节我们将描述客户端和Raft的交互过程，包括客户端怎么找到leader和raft怎么支持线性语义。
+> > 2. 这样问题存在所有基于一致性的系统中，我们的方案和别的系统也是相似的。
  
+> Clients of Raft send all of their requests to the leader. When a client first starts up, it connects to a randomly- chosen server. If the client’s first choice is not the leader, that server will reject the client’s request and supply in- formation about the most recent leader it has heard from (AppendEntries requests include the network address of the leader). If the leader crashes, client requests will time out; clients then try again with randomly-chosen servers.
+> > #### NOTES:
+> > 1. Raft的客户端发送它的所有请求到leader。
+> > 2. 当一个客户端首次启动的时候，它将随机选择一个server进行链接，如果首次选择的server不是leader，这个机器将会拒绝客户端的请求，然后将最近自己听到leader的信息告知客户端。
+> > 3. 如果leader崩溃，客户端的请求将会超时，客户端将再重试进行随机选择server。
 
+> Our goal for Raft is to implement linearizable seman- tics (each operation appears to execute instantaneously, exactly once, at some point between its invocation and its response). However, as described so far Raft can exe- cute a command multiple times: for example, if the leader crashes after committing the log entry but before respond- ing to the client, the client will retry the command with a new leader, causing it to be executed a second time. The solution is for clients to assign unique serial numbers to every command. Then, the state machine tracks the latest serial number processed for each client, along with the as- sociated response. If it receives a command whose serial number has already been executed, it responds immedi- ately without re-executing the request.
+> > #### NOTES:
+> > 1. raft的目标是实现线性语义(每个操作表现的为立即就被执行，更准确的说是，是在它们的请求和响应) 
+> > 2. 然而，目前描述的raft可以执行一个命令多次，举个例子没，如果leader在条日志但还没来的及响应客户端的时候便崩溃了。那么客户端将重试命令到一个新的leader上，导致这条命令将被重新执行。解决方法是每一条命令生成一个全局唯一的序列号，状态机追踪每个client已处理的序列号。如果接受到一条命令，它的序列号已经被执行，它可以直接恢复客户端而不用执行请求。
 
+> Read-only operations can be handled without writing anything into the log. However, with no additional mea- sures, this would run the risk of returning stale data, since the leader responding to the request might have been su- perseded by a newer leader of which it is unaware. Lin- earizable reads must not return stale data, and Raft needs two extra precautions to guarantee this without using the log. First, a leader must have the latest information on which entries are committed. The Leader Completeness Property guarantees that a leader has all committed en- tries, but at the start of its term, it may not know which those are. To find out, it needs to commit an entry from its term. Raft handles this by having each leader com- mit a blank no-op entry into the log at the start of its term. Second, a leader must check whether it has been de- posed before processing a read-only request (its informa- tion may be stale if a more recent leader has been elected). Raft handles this by having the leader exchange heart- beat messages with a majority of the cluster before re- sponding to read-only requests. Alternatively, the leader could rely on the heartbeat mechanism to provide a form of lease [9], but this would rely on timing for safety (it assumes bounded clock skew).
+> > #### NOTES:
+> > 1. 只读操作可以处理，而不写入任何东西到日志。 
+> > 2. 然而，如果没有额外的措施，这将会导致返回脏数据的风险。可能leader响应客户端滞后被一个新的leader所替代。线性读不应该返回脏数据，raft使用了两个额外的措施来保证
+> >     - 首先leader必须有最新提交日志记录的信息。leder的完成性保证一个leader有所有已提交的体制，但是在它自己任期刚开始的时候，它是不清楚已提交的日志。为了确定它需要在自己的任期提交一条日志。每个leder在自己任期开始的时候提交一个空的体制记录。
+> >     - 一个leader进行只读操作的时候必须检测是否已经被罢免（如果一个新的leader当选，这样信息将会是脏数据）。 raft在进行只读的操作请求前，会使心跳和集群中的大多数机器交换信息。leader可以依靠心跳机制来提供一种租约，但是这将依赖时间来满足安全性。
 
-
-
-
-
-
-
-
-
-
-  
-
-
-
-
-
-
-
-
-
-
-
-
+> We have implemented Raft as part of a replicated state machine that stores configuration information for RAMCloud [33] and assists in failover of the RAMCloud coordinator. The Raft implementation contains roughly 2000 lines of C++ code, not including tests, comments, or blank lines. The source code is freely available [23]. There are also about 25 independent third-party open source im- plementations [34] of Raft in various stages of develop- ment, based on drafts of this paper. Also, various compa- nies are deploying Raft-based systems [34].
+The remainder of this section evaluates Raft using three criteria: understandability, correctness, and performance.
+> > #### NOTES:
+> > 1. raft的c++代码有2000行，代码是开源的。http://github.com/ logcabin/logcabin
  
