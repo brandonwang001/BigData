@@ -8,4 +8,15 @@
 - 系统可用性的观测指标
 - 系统可用性的提升
     - 提升系统MTBF
-    - 降低系统MTTR 
+    - 降低系统MTTR
+    
+## 硬件可靠性
+### 可靠性定义
+
+                Reliability = exp(-t/t_MTBF) 
+   where, 
+    Reliability为可靠性；
+    t为系统运行时间；
+    t_MTBF为平均故障间隔时间;
+
+    根据上面的公式可知：当t_MTBF确定时，
