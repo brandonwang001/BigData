@@ -12,11 +12,9 @@
     
 ## 硬件可靠性
 ### 可靠性定义
-
-                Reliability = exp(-t/t_MTBF) 
-   where,   
-    Reliability为可靠性;  
-    t为系统运行时间； 
-    t_MTBF为平均故障间隔时间;  
-
-    根据上面的公式可知：当t_MTBF确定时，
+&emsp;&emsp;&emsp;&emsp; Reliability = exp(-t/t_MTBF) 
+where,  
+&emsp;&emsp;&emsp;&emsp; Reliability为可靠性;  
+&emsp;&emsp;&emsp;&emsp; t为系统运行时间；
+&emsp;&emsp;&emsp;&emsp; t_MTBF为平均故障间隔时间;  
+&emsp;&emsp;根据上面的公式可知：当t_MTBF确定时，
