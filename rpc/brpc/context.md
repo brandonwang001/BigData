@@ -89,3 +89,46 @@ __asm (
 +--------------+
 
 ```
+
+```
+#if defined(BTHREAD_CONTEXT_PLATFORM_linux_x86_64) && defined(BTHREAD_CONTEXT_COMPILER_gcc)
+__asm (
+".text\n"
+".globl bthread_jump_fcontext\n"
+".type bthread_jump_fcontext,@function\n"
+".align 16\n"
+"bthread_jump_fcontext:\n"
+"    pushq  %rbp  \n"
+"    pushq  %rbx  \n"
+"    pushq  %r15  \n"
+"    pushq  %r14  \n"
+"    pushq  %r13  \n"
+"    pushq  %r12  \n"
+"    leaq  -0x8(%rsp), %rsp\n"
+"    cmp  $0, %rcx\n"
+"    je  1f\n"
+"    stmxcsr  (%rsp)\n"
+"    fnstcw   0x4(%rsp)\n"
+"1:\n"
+"    movq  %rsp, (%rdi)\n"
+"    movq  %rsi, %rsp\n"
+"    cmp  $0, %rcx\n"
+"    je  2f\n"
+"    ldmxcsr  (%rsp)\n"
+"    fldcw  0x4(%rsp)\n"
+"2:\n"
+"    leaq  0x8(%rsp), %rsp\n"
+"    popq  %r12  \n"
+"    popq  %r13  \n"
+"    popq  %r14  \n"
+"    popq  %r15  \n"
+"    popq  %rbx  \n"
+"    popq  %rbp  \n"
+"    popq  %r8\n"
+"    movq  %rdx, %rax\n"
+"    movq  %rdx, %rdi\n"
+"    jmp  *%r8\n"
+".size bthread_jump_fcontext,.-bthread_jump_fcontext\n"
+".section .note.GNU-stack,\"\",%progbits\n"
+);
+```
