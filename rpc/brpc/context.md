@@ -1,4 +1,5 @@
-`#if defined(BTHREAD_CONTEXT_PLATFORM_linux_x86_64) && defined(BTHREAD_CONTEXT_COMPILER_gcc)
+```
+#if defined(BTHREAD_CONTEXT_PLATFORM_linux_x86_64) && defined(BTHREAD_CONTEXT_COMPILER_gcc)
 __asm (
 ".text\n"
 ".globl bthread_make_fcontext\n"
@@ -20,4 +21,5 @@ __asm (
 "    hlt\n"
 ".size bthread_make_fcontext,.-bthread_make_fcontext\n"
 ".section .note.GNU-stack,\"\",%progbits\n"
-);`
+);
+```
