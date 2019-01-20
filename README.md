@@ -36,4 +36,4 @@ Record famous repository.
 |------------|-------|
 |Apache Incubation|[Apache孵化器](http://incubator.apache.org/projects/)|
 |Tencent|[libco](https://github.com/Tencent/libco) [phxpaxos](https://github.com/Tencent/phxpaxos) [phxqueue](https://github.com/Tencent/phxqueue) [phxrpc](https://github.com/Tencent/phxrpc) [paxosstore](https://github.com/Tencent/paxosstore) [phxsql](https://github.com/Tencent/phxsql)|
-|Google|(spanner)[https://static.googleusercontent.com/media/research.google.com/zh-CN//archive/spanner-osdi2012.pdf]|
+|Google|[spanner](https://static.googleusercontent.com/media/research.google.com/zh-CN//archive/spanner-osdi2012.pdf)|
