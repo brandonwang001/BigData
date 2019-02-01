@@ -37,3 +37,31 @@ Record famous repository.
 |Apache Incubation|[Apache孵化器](http://incubator.apache.org/projects/)|
 |Tencent|[libco](https://github.com/Tencent/libco) [phxpaxos](https://github.com/Tencent/phxpaxos) [phxqueue](https://github.com/Tencent/phxqueue) [phxrpc](https://github.com/Tencent/phxrpc) [paxosstore](https://github.com/Tencent/paxosstore) [phxsql](https://github.com/Tencent/phxsql)|
 |Google|[spanner](https://static.googleusercontent.com/media/research.google.com/zh-CN//archive/spanner-osdi2012.pdf)|
+
+|Papers|
+|------------|
+|The Google File System|
+|MapReduce: Simplified Data Processing on Large Clusters|
+|Bigtable: A Distributed Storage System for Structured Data|
+|The Chubby lock service for loosely-coupled distributed systems|
+|Finding a Needle in Haystack: Facebook's Photo Storage|
+|Windows Azure Storage: a highly available cloud storage service with strong consistency|
+|GraphLab: A New Framework for Parallel Machine Learning|
+|Resilient Distributed Datasets: A Fault-Tolerant Abstraction for In-Memory Cluster Computing|
+|Scaling Distributed Machine Learning with the Parameter Server|
+|Dremel: Interactive Analysis of Web-Scale Datasets|
+|Pregel: a system for large-scale graph processing|
+|Spanner: Google's Globally-Distributed Database|
+|Dynamo: Amazon’s Highly Available Key-value Store|
+|S4: Distributed Stream Computing Platform|
+|Storm|
+|Large-scale cluster management at Google with Borg|
+|F1 - The Fault-Tolerant Distributed RDBMS Supporting Google's Ad Business|
+|A brief history of Consensus- 2PC and Transaction Commit |
+|Paxos Made Simple|
+|Time Clocks and the Ordering of Events in a Distributed System|
+|Virtual Time and Global States of Distributed Systems|
+|Distributed Snapshots: Determining Global States of a Distributed System|
+|The ganglia distributed monitoring system:design, implementation, and experience|
+|Chukwa: A large-scale monitoring system|
+|Web search for a planet: The Google cluster architecture|
