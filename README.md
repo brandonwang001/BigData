@@ -40,7 +40,7 @@ Record famous repository.
 
 |Papers|state|
 |------------|-----------|
-|The Google File System|- [x]|
+|The Google File System|`- [x]`|
 |MapReduce: Simplified Data Processing on Large Clusters|
 |Bigtable: A Distributed Storage System for Structured Data|
 |The Chubby lock service for loosely-coupled distributed systems|
