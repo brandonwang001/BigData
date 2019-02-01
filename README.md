@@ -38,9 +38,9 @@ Record famous repository.
 |Tencent|[libco](https://github.com/Tencent/libco) [phxpaxos](https://github.com/Tencent/phxpaxos) [phxqueue](https://github.com/Tencent/phxqueue) [phxrpc](https://github.com/Tencent/phxrpc) [paxosstore](https://github.com/Tencent/paxosstore) [phxsql](https://github.com/Tencent/phxsql)|
 |Google|[spanner](https://static.googleusercontent.com/media/research.google.com/zh-CN//archive/spanner-osdi2012.pdf)|
 
-|Papers|
-|------------|
-|The Google File System|
+|Papers|state|
+|------------|-----------|
+|The Google File System|-[x]|
 |MapReduce: Simplified Data Processing on Large Clusters|
 |Bigtable: A Distributed Storage System for Structured Data|
 |The Chubby lock service for loosely-coupled distributed systems|
